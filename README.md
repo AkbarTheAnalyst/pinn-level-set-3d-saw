@@ -118,19 +118,19 @@ High-resolution PNGs for all paper figures are already available in
 PNG files; if you prefer curated assets, copy the chosen PNGs into
 `assets/`.
 
-- Architecture & Training (priority 1):
+- Architecture & Training:
 
   ![Figure 1 — Architecture](figures/fig1_architecture.png)
 
-- RV3D interface (priority 2):
+- RV3D interface:
 
   ![Figure 9 — RV3D interface](figures/rv3d_interface.png)
 
-- ZD3D cutaway (priority 3):
+- ZD3D cutaway:
 
   ![Figure 6 — ZD3D cutaway](figures/zd3d_cutaway.png)
 
-- TR3D verification (priority 4):
+- TR3D verification:
 
   ![Figure 3 — TR3D verification](figures/tr3d_verification.png)
 
@@ -163,7 +163,7 @@ pinn-level-set-3d/
 ├── rv3d/                  # RV3D notebooks, core code, README
 ├── weno/                  # WENO benchmark code and notebook
 ├── figures/               # all generated figure PDFs/PNGs
-├── results/               # CSVs, checkpoints, and other result artifacts
+├── results/               # CSVs and other result artifacts
 ├── assets/                # curated paper-ready assets
 ├── requirements.txt
 ├── LICENSE
