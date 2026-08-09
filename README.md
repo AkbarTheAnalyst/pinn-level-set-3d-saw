@@ -1,12 +1,9 @@
-# Eikonal Regularization in Physics-Informed Neural Networks for Three-Dimensional Level-Set Advection: Transferability of Two-Dimensional Design Principles
+# Eikonal Regularisation in Physics-Informed Neural Networks for Three-Dimensional Level-Set Advection: Transferability of Two-Dimensional Design Principles
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange?logo=pytorch)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Preprint%20in%20preparation-lightgrey)]()
-<!-- TODO once available: swap the badge above for the DOI/journal badge,
-     and add a Zenodo data/code-archive badge (see the \PH{...} placeholders
-     in the manuscript's Code and Data Availability section). -->
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21860060.svg)](https://doi.org/10.5281/zenodo.21860060)
 
 > Direct 3D follow-up to [`pinn-level-set`](https://github.com/AkbarTheAnalyst/pinn-level-set)
 > (Khan & Raees, *Machine Learning: Science and Technology*, 2026,
@@ -148,8 +145,7 @@ cd pinn-level-set-3d
 pip install -r requirements.txt
 ```
 
-<!-- TODO: add the Zenodo data/code archive link once minted, matching the
-     \PH{URL} in the manuscript's Code and Data Availability section. -->
+Code and data archived on Zenodo: [doi:10.5281/zenodo.21860060](https://doi.org/10.5281/zenodo.21860060)
 
 ---
 
@@ -232,16 +228,17 @@ This README now reflects the current on-disk structure.
 ## Citation
 
 ```bibtex
-@article{khan2026eikonal3d,
-  author  = {Muhammad Akbar Khan},
-  title   = {Eikonal Regularization in Physics-Informed Neural Networks
-             for Three-Dimensional Level-Set Advection: Transferability
-             of Two-Dimensional Design Principles},
-  year    = {2026},
-  note    = {Preprint / in preparation}
+@misc{khan2026eikonal3d,
+  author = {Muhammad Akbar Khan},
+  title  = {Eikonal Regularisation in Physics-Informed Neural Networks
+            for Three-Dimensional Level-Set Advection: Transferability
+            of Two-Dimensional Design Principles},
+  year   = {2026},
+  note   = {Preprint, Zenodo},
+  doi    = {10.5281/zenodo.21860060},
+  url    = {https://doi.org/10.5281/zenodo.21860060}
 }
 ```
-<!-- TODO: replace with the final journal/preprint entry once assigned. -->
 
 ---
 
