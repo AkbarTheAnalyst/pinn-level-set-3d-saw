@@ -174,8 +174,8 @@ respectively).
 ## Installation
 
 ```bash
-git clone https://github.com/AkbarTheAnalyst/pinn-level-set-3d.git
-cd pinn-level-set-3d
+git clone https://github.com/AkbarTheAnalyst/pinn-level-set-3d-saw.git
+cd pinn-level-set-3d-saw
 pip install -r requirements.txt
 ```
 
@@ -186,7 +186,7 @@ Code and data archived on Zenodo: [doi:10.5281/zenodo.21860060](https://doi.org/
 ## Repository Structure
 
 ```
-pinn-level-set-3d/
+pinn-level-set-3d-saw/
 ├── tr3d/                  # TR3D notebooks, core code
 ├── ro3d/                  # RO3D notebooks, core code
 ├── zd3d/                  # ZD3D notebooks, core code
