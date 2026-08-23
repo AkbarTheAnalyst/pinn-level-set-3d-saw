@@ -3,7 +3,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange?logo=pytorch)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21860060.svg)](https://doi.org/10.5281/zenodo.21860060)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21852143.svg)](https://doi.org/10.5281/zenodo.21852143)
 
 > Code for **SDF-Aware Weighting (SAW)**, an adaptive eikonal regularisation
 > scheme for 3D level-set PINNs. The training protocol is inherited from
@@ -179,7 +179,7 @@ cd pinn-level-set-3d-saw
 pip install -r requirements.txt
 ```
 
-Code and data archived on Zenodo: [doi:10.5281/zenodo.21860060](https://doi.org/10.5281/zenodo.21860060)
+Code and data archived on Zenodo: [doi:10.5281/zenodo.21852143](https://doi.org/10.5281/zenodo.21852143)
 
 ---
 
@@ -265,8 +265,8 @@ This section will be expanded with exact run commands for:
             Three-Dimensional Level-Set Physics-Informed Neural Networks},
   year   = {2026},
   note   = {Preprint, Zenodo},
-  doi    = {10.5281/zenodo.21860060},
-  url    = {https://doi.org/10.5281/zenodo.21860060}
+  doi    = {10.5281/zenodo.21852143},
+  url    = {https://doi.org/10.5281/zenodo.21852143}
 }
 ```
 
