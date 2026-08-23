@@ -257,7 +257,176 @@ def make_loss(net, sampler, X_i, T_final, w_pde=1.0, w_ic=10.0, w_eik=0.001,
             w_pde*loss_pde + w_ic*loss_ic + w_eik*loss_eik)
   return loss_fn
 
+class SAW:
+  """SDF-Aware Weighting — adaptive eikonal regularisation.
 
+  Adaptive loss balancing normally assumes every residual should be driven to
+  zero.  For level-set advection the eikonal residual of the EXACT solution is
+  nonzero wherever the transported field departs from a signed-distance
+  function, so that assumption fails and a scheme which enforces it moves the
+  network away from the correct answer.  On this benchmark the initial field is
+  the CSG difference max(phi_sphere, -phi_slot), which returns the distance to
+  the nearer face rather than to the edge near the reentrant edges of the slot,
+  so |grad phi| != 1 there in the exact solution.
+
+  SAW has two parts:
+
+  * Residual-quantile gate — points whose eikonal residual exceeds the q-th
+                             percentile are dropped from the eikonal loss, on
+                             the reasoning that a large eikonal residual is
+                             evidence of genuine SDF violation rather than of
+                             network error.  The threshold is EMA-smoothed.
+  * Gradient-norm ratio    — the surviving eikonal term is scaled so its
+                             parameter-gradient norm matches the combined
+                             PDE + IC norms, clamped to [0, w_pde] and
+                             EMA-smoothed.
+
+  The gate is what allows the ratio to move: with the gate disabled the
+  eikonal loss stays small, the ratio remains pinned at its clamp, and the
+  weight never leaves its initial value.
+
+  Buffers are warm-started to the population mean whenever RAD/RAR changes the
+  collocation count, preventing cold-start spikes.
+
+  Call signature matches make_loss: fn() -> (pde, ic, eik, total).
+  The adaptive weights are exposed as fn.w_global after each call, and the
+  full weight trajectory as fn.w_hist.
+  """
+
+  def __init__(self, net, sampler, X_i, T_final,
+               beta=0.999, q=0.95,
+               m_chunks=32, eps_causal=1.0):
+    self.net        = net
+    self._gn_params = [p for p in list(net.parameters())[-2:] if p.requires_grad]
+    self.sampler    = sampler
+    self.X_i        = X_i
+    self.T_final    = T_final
+    self.beta       = beta          # EMA smoothing
+    self.q          = q             # quantile threshold for the eikonal gate
+    self.m_chunks   = m_chunks
+    self.eps_causal = eps_causal
+    self.w_pde      = 1.0
+    self.w_ic       = 10.0
+    self.w_global   = None
+    self.w_hist     = []      # trajectory of the adaptive weight, one per call
+
+    self._ema_r_pde = None
+    self._ema_r_eik = None
+    self._ema_r_ic  = None
+    self._ema_tau   = None    # smoothed quantile threshold
+    self._ema_w_eik = None    # smoothed gradient-norm ratio
+    self._n_f       = 0
+    self._n_i       = 0
+
+  def __call__(self):
+    X_f = self.sampler.points()
+    X_i = self.X_i
+
+    # 1. Pointwise squared residuals for all three terms -------------------
+    phi_f = self.net(X_f)
+    g = torch.autograd.grad(phi_f, X_f, grad_outputs=torch.ones_like(phi_f),
+                            create_graph=True)[0]
+    px, py, pz, pt = g[:, 0:1], g[:, 1:2], g[:, 2:3], g[:, 3:4]
+    u, v, w_vel = velocity_field(X_f[:, 0:1], X_f[:, 1:2], X_f[:, 2:3])
+
+    res_pde = (pt + self.T_final * (u*px + v*py + w_vel*pz))**2   # (N_f, 1)
+    res_eik = (torch.sqrt(px**2 + py**2 + pz**2 + 1e-8) - 1.0)**2  # (N_f, 1)
+
+    phi_i    = self.net(X_i)
+    phi_ex_i = initial_condition(X_i[:, 0:1], X_i[:, 1:2], X_i[:, 2:3])
+    res_ic   = (phi_i - phi_ex_i)**2                               # (N_i, 1)
+
+    # 2. Causal PDE loss (Wang et al. 2022 — structure unchanged) ----------
+    m_chunks = self.m_chunks
+    chunk    = X_f.shape[0] // m_chunks
+    sort_idx = torch.argsort(X_f[:, 3].detach())
+    rs       = res_pde[sort_idx]
+    cmeans   = [torch.mean(rs[m*chunk:(m+1)*chunk]) for m in range(m_chunks)]
+    cumsum   = torch.zeros((), device=X_f.device)
+    cweights = []
+    for m in range(m_chunks):
+      cweights.append(torch.exp(-self.eps_causal * cumsum))
+      cumsum = cumsum + cmeans[m].detach()
+    loss_pde = sum(cweights[m] * cmeans[m] for m in range(m_chunks)) / m_chunks
+
+    # 3. Gradient-norm ratio ----------------------------------------------
+    N_f, N_i = X_f.shape[0], X_i.shape[0]
+
+    def _grad_norm(loss_scalar):
+      # last-layer proxy: the ratio is preserved and the cost falls sharply
+      grads = torch.autograd.grad(loss_scalar, self._gn_params,
+                                  retain_graph=True, allow_unused=True)
+      return sum(gr.norm()**2 for gr in grads if gr is not None).sqrt()
+
+    gn_pde = _grad_norm(loss_pde).detach()
+    gn_ic  = _grad_norm(self.w_ic * torch.mean(res_ic)).detach()
+    gn_eik = _grad_norm(torch.mean(res_eik)).detach()
+
+    with torch.no_grad():
+      # warm-start when RAD/RAR changes the collocation count
+      if N_f != self._n_f:
+        m_p = (self._ema_r_pde.mean() if self._ema_r_pde is not None
+               else res_pde.detach().mean())
+        m_e = (self._ema_r_eik.mean() if self._ema_r_eik is not None
+               else res_eik.detach().mean())
+        self._ema_r_pde = torch.full((N_f, 1), float(m_p), device=X_f.device)
+        self._ema_r_eik = torch.full((N_f, 1), float(m_e), device=X_f.device)
+        self._n_f = N_f
+
+      if N_i != self._n_i:
+        m_i = (self._ema_r_ic.mean() if self._ema_r_ic is not None
+               else res_ic.detach().mean())
+        self._ema_r_ic = torch.full((N_i, 1), float(m_i), device=X_i.device)
+        self._n_i = N_i
+
+      b = self.beta
+      self._ema_r_pde = b * self._ema_r_pde + (1 - b) * res_pde.detach()
+      self._ema_r_eik = b * self._ema_r_eik + (1 - b) * res_eik.detach()
+      self._ema_r_ic  = b * self._ema_r_ic  + (1 - b) * res_ic.detach()
+
+      # w_eik clamped to [0, w_pde] BEFORE the EMA: gn_eik -> 0 near
+      # convergence sends the raw ratio arbitrarily high, and an unclamped
+      # value baked into the EMA state would take ~1/(1-beta) steps to unwind
+      w_eik_raw = torch.clamp((gn_pde + gn_ic) / (gn_eik + 1e-8),
+                              0.0, self.w_pde)
+      if self._ema_w_eik is None:
+        self._ema_w_eik = w_eik_raw
+      self._ema_w_eik = self.beta * self._ema_w_eik + (1 - self.beta) * w_eik_raw
+      w_eik_scalar = float(self._ema_w_eik)
+
+      # Residual-quantile gate ------------------------------------------
+      curr_q = torch.quantile(res_eik.detach().squeeze(), self.q)
+      if self._ema_tau is None:
+        self._ema_tau = curr_q
+      self._ema_tau = 0.99 * self._ema_tau + 0.01 * curr_q
+      w_pt_eik = torch.where(res_eik.detach() > self._ema_tau,
+                             torch.zeros_like(res_eik),
+                             torch.ones_like(res_eik))
+
+      self.w_global = torch.tensor([self.w_pde, self.w_ic, w_eik_scalar])
+      self.w_hist.append(w_eik_scalar)
+
+    # 4. Loss assembly -----------------------------------------------------
+    loss_ic  = torch.mean(res_ic)
+    loss_eik = torch.mean(res_eik)
+    total    = (self.w_pde * loss_pde
+                + self.w_ic * loss_ic
+                + w_eik_scalar * torch.mean(w_pt_eik * res_eik))
+
+    return loss_pde, loss_ic, loss_eik, total
+
+
+def make_loss_saw(net, sampler, X_i, T_final,
+                  beta=0.999, q=0.95,
+                  m_chunks=32, eps_causal=1.0):
+  """Factory returning a callable SAW loss object.
+
+  Drop-in replacement for make_loss.  make_loss is retained because
+  01_eikonal_ablation.ipynb sweeps a fixed w_eik.
+  """
+  return SAW(net, sampler, X_i, T_final,
+             beta=beta, q=q,
+             m_chunks=m_chunks, eps_causal=eps_causal)
 # ----------------------------------------------------------------- training
 def train(net, loss_fn, sampler=None, adam_epochs=20000, lbfgs_epochs=500,
           lr=1e-3, eta_min=1e-5, clip=1.0, verbose=True, log_every=2000):

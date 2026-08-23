@@ -1,59 +1,88 @@
-# Eikonal Regularisation in Physics-Informed Neural Networks for Three-Dimensional Level-Set Advection: Transferability of Two-Dimensional Design Principles
+# SDF-Aware Weighting: Adaptive Eikonal Regularisation for Three-Dimensional Level-Set Physics-Informed Neural Networks
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.x-orange?logo=pytorch)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21860060.svg)](https://doi.org/10.5281/zenodo.21860060)
 
-> Direct 3D follow-up to [`pinn-level-set`](https://github.com/AkbarTheAnalyst/pinn-level-set)
+> Code for **SDF-Aware Weighting (SAW)**, an adaptive eikonal regularisation
+> scheme for 3D level-set PINNs. The training protocol is inherited from
+> [`pinn-level-set`](https://github.com/AkbarTheAnalyst/pinn-level-set)
 > (Khan & Raees, *Machine Learning: Science and Technology*, 2026,
-> [doi:10.1088/2632-2153/ae8b74](https://doi.org/10.1088/2632-2153/ae8b74)).
-> That study identified the eikonal-regularisation weight as the most
-> influential hyperparameter in 2D and left two questions open: does the
-> design transfer to 3D, and do single-seed results survive run-to-run
-> variance? This repository is the code for the paper answering both.
+> [doi:10.1088/2632-2153/ae8b74](https://doi.org/10.1088/2632-2153/ae8b74)),
+> which identified the eikonal weight as the dominant hyperparameter but
+> located it by sweep — eighteen runs per benchmark. SAW replaces that
+> sweep with a single run.
 
 ---
 
 ## Overview
 
-Physics-informed neural networks applied to the level-set formulation of
-interface advection
+Physics-informed neural networks for level-set advection
 
 $$\frac{\partial \phi}{\partial t} + \mathbf{u}\cdot\nabla\phi = 0, \qquad \mathbf{x}\in\Omega=[0,1]^3$$
 
 commonly augment the loss with an eikonal regulariser penalising the
-deviation of $\lVert\nabla\phi\rVert$ from unity. This repository sweeps that
-weight across four 3D benchmarks (three random seeds each, full training
-budget, a selection rule fixed in advance), and benchmarks the result
-against a fifth-order WENO + TVD-RK3 classical solver on identical grids.
+deviation of $\lVert\nabla\phi\rVert$ from unity. Standard adaptive
+loss-balancing schemes assume every residual in the composite objective
+should be driven to zero. For the eikonal term that assumption fails:
+where the exact solution is not a signed-distance function, the eikonal
+residual of the correct answer is nonzero, and a scheme that drives it
+towards zero moves the network away from that answer.
+
+This repository contains:
+
+1. **Fixed-weight sweeps** across four 3D benchmarks (six weights, three
+   random seeds each, selection rule fixed in advance), establishing the
+   target each adaptive scheme must recover.
+
+2. **SDF-Aware Weighting (SAW)**, which combines a residual-quantile gate
+   with a gradient-norm ratio so that points exhibiting legitimate departure
+   from the signed-distance property are excluded before the surviving term
+   is scaled. With one fixed configuration SAW selects a weight within an
+   order of magnitude of the swept optimum on every benchmark, spanning
+   four decades, at the cost of a single training run.
+
+3. **A gate ablation** isolating SAW's two components, showing that
+   gradient-norm balancing alone fails to descend on the benchmarks where
+   the signed-distance property is violated.
+
+4. **A WENO5 + TVD-RK3 baseline** on the same grids, snapshots, and error
+   measures.
 
 **Key findings:**
-- The 2D weight-selection ordering transfers to 3D: the selected weight
-  tracks how far the exact solution departs from a signed distance
-  function, spanning four decades ($10^{-1}$ where the property holds
-  exactly to $10^{-5}$ where the interface is stretched).
-- The *specific* weights transfer only benchmark by benchmark: three of
-  four carry over unchanged from the 2D study; one (translating sphere)
-  does not.
+- Standard gradient-norm balancing fails structurally on this problem
+  class: the eikonal weight stays at its initial value for the whole of
+  training on the benchmarks where the signed-distance property is
+  violated.
+- SAW recovers the weight an eighteen-run sweep selects, reproduces the
+  ordering across four decades, and on the slotted sphere attains a lower
+  error than any weight the sweep examined — in a single run.
+- SAW is worse than a fixed weight on the two smooth rigid benchmarks,
+  where the signed-distance property holds everywhere. This is expected
+  and reported.
+- The 2D weight-selection ordering transfers to 3D. The specific values
+  transfer only partially: two of the four carry over unchanged; the
+  translating sphere moves from $1$ to $10^{-1}$ and the reversed vortex
+  from $10^{-4}$ to $10^{-5}$.
 - With three seeds per configuration, the seed-to-seed standard deviation
   at small weights is of the same order as the error itself; the
   regulariser reduces it by more than an order of magnitude — it buys
   reproducibility as well as accuracy.
-- Against fifth-order WENO on identical grids/measures, the classical
-  scheme is more accurate on all four benchmarks — by a factor of $122$
-  on smooth rigid advection, narrowing to $4.3$ under deformation.
-- The standard relative $L_2$ error cannot certify preservation of thin
-  features: on the slotted sphere, removing the slot entirely from the
-  exact solution changes it by only about one percentage point. We
-  report a sign-based, feature-restricted measure that can.
+- Against WENO5 on identical grids and measures, the classical scheme is
+  more accurate on all four benchmarks — by a factor of $105$ on smooth
+  rigid advection, narrowing to $4.3$ under deformation.
+- The standard relative $L_2$ error cannot certify thin features: on the
+  slotted sphere, removing the slot entirely changes it by about one
+  percentage point. We report a sign-based, feature-restricted measure
+  that can.
 
 ---
 
 ## Benchmarks
 
-Four benchmarks on the unit cube $\Omega=[0,1]^3$, ordered by how far their
-exact solution departs from a signed distance function:
+Four benchmarks on the unit cube $\Omega=[0,1]^3$, ordered by how far
+their exact solution departs from a signed-distance function:
 
 | Benchmark | Description | $T$ | Selected $w_\text{eik}$ |
 |---|---|---|---|
@@ -62,7 +91,7 @@ exact solution departs from a signed distance function:
 | **ZD3D** — Zalesak slotted sphere | Rotation + thin blind-pocket slot | $2\pi$ | $10^{-3}$ |
 | **RV3D** — Reversed single vortex | Enright (2002) deformation field | $2$ | $10^{-5}$ |
 
-### Reported configuration (selected weight, seed 42, 201³ grid, 6 snapshots)
+### Fixed-weight baseline (selected weight, seed 42, 201³ grid, 6 snapshots)
 
 | Benchmark | abs. $L_2$ | rel. $L_2$ (%) | volume MAPE (%) | eikonal dev. | time (min) |
 |---|---|---|---|---|---|
@@ -71,17 +100,29 @@ exact solution departs from a signed distance function:
 | ZD3D | 2.03e-3 | 0.480 | 0.328 | 1.02e-1 | 27.1 |
 | RV3D | 2.52e-3 | 0.591 | 0.564 | 5.97e-1 | 23.7 |
 
-Timings are for a single NVIDIA T4. Full per-weight sweep tables (mean ± std
-over 3 seeds) are tracked in benchmark-specific CSV files once each benchmark
-folder is populated.
+Timings are for a single NVIDIA T4.
+
+### SAW results ($\beta = 0.999$, $q = 0.95$, mean over 3 seeds)
+
+| Benchmark | rel. $L_2$ (%) | volume MAPE (%) | converged $w_\text{eik}$ |
+|---|---|---|---|
+| TR3D | 1.035 ± 0.539 | 1.811 ± 0.526 | 5.11e-2 |
+| RO3D | 0.816 ± 0.032 | 19.045 ± 1.251 | 1.79e-1 |
+| ZD3D | **0.285 ± 0.155** | 1.561 ± 1.167 | 2.25e-3 |
+| RV3D | 0.868 ± 0.036 | 1.218 ± 0.439 | 8.25e-5 |
+
+SAW improves on the fixed-weight sweep on ZD3D and is within a factor of
+1.5 on RV3D; it is worse on TR3D and RO3D, where the premise does not
+hold. Full per-weight sweep tables (mean ± std over 3 seeds) are in the
+benchmark-specific CSV files.
 
 ---
 
 ## Architecture & Training
 
-Same architecture and optimiser protocol across all four benchmarks
-(inherited from the 2D study), only the eikonal weight, sampling strategy,
-and causal-weighting chunk count differ:
+Same base architecture across all four benchmarks, inherited from the 2D
+study. Only the eikonal weight, sampling strategy, and causal-weighting
+chunk count differ.
 
 ```
 Input: (x, y, z, tau_norm) in R^4
@@ -97,23 +138,20 @@ Output: phi_hat(x, y, z, tau_norm) in R
 | Activation | Tanh |
 | Weight init | Xavier |
 | $w_\text{pde}$, $w_\text{ic}$ | $1$, $10$ (fixed) |
-| $w_\text{eik}$ | swept: 6 values, 4 decades, incl. 0 (control) |
-| Optimiser | Adam (2e4 iters, cosine $10^{-3}\to10^{-5}$) then L-BFGS (strong-Wolfe) |
+| $w_\text{eik}$ | swept: 6 log-spaced values over 4 decades, incl. 0 (control) |
+| Optimiser | Adam (2×10⁴ iters, cosine 10⁻³→10⁻⁵) then L-BFGS (strong-Wolfe) |
 | Seeds | 42, 43, 44 (controls init *and* collocation sampling) |
 | Eval grid | 201³ ($\Delta x = 0.005$), 6 snapshots $t=0,T/5,\dots,T$ |
+| **SAW** $\beta$, $q$ | **0.999, 0.95** (fixed across all benchmarks) |
 
 ZD3D additionally uses a random Fourier feature encoding (128 features,
 $\sigma=5$). ZD3D and RV3D additionally use residual-based adaptive
 sampling (RAD/RAR) and causal loss weighting ($M=32$ and $M=10$ chunks
 respectively).
 
-## Embedded Figures (GitHub preview)
+---
 
-For quick browsing on GitHub we embed four high-impact paper figures below.
-High-resolution PNGs for all paper figures are already available in
-`figures/`. To show them inline from this README, we point to the existing
-PNG files; if you prefer curated assets, copy the chosen PNGs into
-`assets/`.
+## Embedded Figures (GitHub preview)
 
 - Architecture & Training:
 
@@ -130,10 +168,6 @@ PNG files; if you prefer curated assets, copy the chosen PNGs into
 - TR3D verification:
 
   ![Figure 3 — TR3D verification](figures/tr3d_verification.png)
-
-If you want these assets consolidated for the repository front page, copy the
-PNG files from `figures/` into `assets/` and commit the `assets/` folder.
-
 
 ---
 
@@ -153,11 +187,11 @@ Code and data archived on Zenodo: [doi:10.5281/zenodo.21860060](https://doi.org/
 
 ```
 pinn-level-set-3d/
-├── tr3d/                  # TR3D notebooks, core code, README
-├── ro3d/                  # RO3D notebooks, core code, README
-├── zd3d/                  # ZD3D notebooks, core code, README
-├── rv3d/                  # RV3D notebooks, core code, README
-├── weno/                  # WENO benchmark code and notebook
+├── tr3d/                  # TR3D notebooks, core code
+├── ro3d/                  # RO3D notebooks, core code
+├── zd3d/                  # ZD3D notebooks, core code
+├── rv3d/                  # RV3D notebooks, core code
+├── weno/                  # WENO baseline code and notebook
 ├── figures/               # all generated figure PDFs/PNGs
 ├── results/               # CSVs and other result artifacts
 ├── assets/                # curated paper-ready assets
@@ -166,35 +200,32 @@ pinn-level-set-3d/
 └── README.md
 ```
 
-The benchmark folders are intentionally small: each one keeps only its local
-`.py`, `.ipynb`, and `README.md` files, while shared outputs live in
-`figures/` and `results/`.
+Each benchmark folder keeps its local `.py` and `.ipynb`
+files; shared outputs live in `figures/` and `results/`.
 
 ---
 
-## Reproducing the eikonal sweep
+## Reproducing the results
 
-Each benchmark folder contains the code and notebooks needed to run the local
-ablation and evaluation workflow. Shared outputs are separated into central
-folders, so the same layout can be used across TR3D, RO3D, ZD3D, and RV3D.
+Each benchmark folder contains the code and notebooks for the local sweep
+and evaluation workflow.
 
 This section will be expanded with exact run commands for:
 
-- eikonal-weight sweep (6 weights x 3 seeds)
-- selected-weight training/evaluation run
-- WENO baseline comparison
+- Fixed-weight eikonal sweep (6 weights × 3 seeds)
+- SAW run ($\beta = 0.999$, $q = 0.95$, 3 seeds)
+- Gate ablation ($q = 1$, 3 seeds)
+- WENO baseline
 
 ---
 
 ## Status
 
-Current state:
-- benchmark folders are present and organized by benchmark
-- figure outputs are centralized in `figures/`
-- result artifacts are centralized in `results/`
-- WENO code and notebook live in `weno/`
-
-This README now reflects the current on-disk structure.
+- Benchmark folders present and organised by benchmark
+- Figure outputs centralised in `figures/`
+- Result artifacts centralised in `results/`
+- WENO code and notebook in `weno/`
+- SAW weight trajectory figure: `figures/saw_weight_trajectory.pdf`
 
 ---
 
@@ -221,18 +252,17 @@ This README now reflects the current on-disk structure.
   neural networks for the level-set interface advection. *Machine
   Learning: Science and Technology*. doi:10.1088/2632-2153/ae8b74.
 
-(Full reference list in the manuscript's `references.bib` / bibliography.)
+(Full reference list in `references.bib`.)
 
 ---
 
 ## Citation
 
 ```bibtex
-@misc{khan2026eikonal3d,
+@misc{khan2026saw,
   author = {Muhammad Akbar Khan},
-  title  = {Eikonal Regularisation in Physics-Informed Neural Networks
-            for Three-Dimensional Level-Set Advection: Transferability
-            of Two-Dimensional Design Principles},
+  title  = {SDF-Aware Weighting: Adaptive Eikonal Regularisation for
+            Three-Dimensional Level-Set Physics-Informed Neural Networks},
   year   = {2026},
   note   = {Preprint, Zenodo},
   doi    = {10.5281/zenodo.21860060},
