@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this code or data, please cite it as below."
+title: "SDF-Aware Weighting: Adaptive Eikonal Regularisation for Three-Dimensional Level-Set Physics-Informed Neural Networks — Source Code"
+version: 1.2.0
+date-released: 2026-11-07
+license: MIT
+repository-code: "https://github.com/AkbarTheAnalyst/pinn-level-set-3d-saw"
+authors:
+  - family-names: Khan
+    given-names: Muhammad Akbar
+    orcid: "https://orcid.org/0009-0001-7956-0080"
+    email: akbar.bsma1337@gmail.com
+    affiliation: "Department of Mathematics, NED University of Engineering and Technology, Karachi, Pakistan"
+  - family-names: Raees
+    given-names: Fahim
+    email: fahimned@neduet.edu.pk
+    affiliation: "Department of Mathematics, NED University of Engineering and Technology, Karachi, Pakistan"
+keywords:
+  - physics-informed neural networks
+  - level-set method
+  - eikonal regularisation
+  - adaptive loss weighting
