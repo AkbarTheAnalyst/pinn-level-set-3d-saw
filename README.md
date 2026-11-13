@@ -159,17 +159,40 @@ weighting ($M=32$ and $M=10$ chunks).
 
   ![Architecture](figures/fig1_architecture.png)
 
+- Fixed-weight sweeps: error against the eikonal weight on all four benchmarks:
+
+  ![Fixed-weight sweeps](figures/fig_sweep.png)
+
 - What the gate removes (slotted sphere slice; precision on the vortex):
 
   ![Gate diagnostics](figures/fig_gate.png)
+
+- ZD3D interface at six snapshots; the camera turns with the body so the slot,
+  which opens towards the rotation axis, stays in view:
+
+  ![ZD3D interface](figures/zd3d_interface_follow.png)
+
+- Slotted sphere in sections fixed to the body, six snapshots:
+
+  ![ZD3D sections](figures/zd3d_bodyframe.png)
 
 - RV3D interface:
 
   ![RV3D interface](figures/rv3d_interface.png)
 
-- ZD3D cutaway:
+- RV3D at the largest deformation: the network's eikonal deviation against the
+  reference solution's:
 
-  ![ZD3D cutaway](figures/zd3d_cutaway.png)
+  ![RV3D at T/2](figures/rv3d_verification.png)
+
+- Error over time on all four benchmarks, fixed weight against SAW (three seeds):
+
+  ![Error growth](figures/fig_growth.png)
+
+- Signed error and eikonal deviation near the interface at $t=T$ for TR3D, RO3D
+  and ZD3D, on common colour scales:
+
+  ![Error near the interface](figures/fig_verification_rigid.png)
 
 ---
 
@@ -215,6 +238,8 @@ pinn-level-set-3d-saw/
 | Reported runs and figures | `<bench>/03_train_and_evaluate.ipynb` → `results/<BENCH>_results.csv`, `figures/` |
 | Controls, diagnostics, $q$ sensitivity, extra seeds | `ablations/notebooks/` → `results/ablations/` |
 | Gate figure | `python figures/fig_gate.py` |
+| Sweep, growth, verification and ZD3D section figures | `python figures/make_figures.py` (`sweep`, `growth`, `verification`, `rv`, `zd`, `zoom` for the combined TR3D/RO3D/ZD3D verification figure, or no argument for all); needs the seed-42 `.pth` checkpoints, which are not in the repository; set `SAW_MODELS` to their folder |
+| ZD3D interface figure | `python figures/zd3d_interface_follow.py` (needs the seed-42 ZD3D checkpoint) |
 | SAW weight trajectory figure | `python figures/fig_weight_trajectory.py` |
 | WENO baseline | `weno/weno_baseline.ipynb` |
 

@@ -7,3 +7,4 @@ checkpoints/
 .DS_Store
 .env
 wandb/
+figures/_zd3d_fields.npz

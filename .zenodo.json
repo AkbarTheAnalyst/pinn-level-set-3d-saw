@@ -1,0 +1,30 @@
+{
+  "title": "SDF-Aware Weighting: Adaptive Eikonal Regularisation for Three-Dimensional Level-Set Physics-Informed Neural Networks — Source Code and Data",
+  "upload_type": "software",
+  "version": "1.2.0",
+  "publication_date": "2026-11-13",
+  "license": "MIT",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Khan, Muhammad Akbar",
+      "orcid": "0009-0001-7956-0080",
+      "affiliation": "Department of Mathematics, NED University of Engineering and Technology, Karachi 75270, Pakistan"
+    },
+    {
+      "name": "Raees, Fahim",
+      "orcid": "0000-0002-2396-1491",
+      "affiliation": "Department of Mathematics, NED University of Engineering and Technology, Karachi 75270, Pakistan"
+    }
+  ],
+  "keywords": [
+    "physics-informed neural networks",
+    "level-set method",
+    "interface advection",
+    "adaptive loss weighting",
+    "eikonal regularisation",
+    "signed-distance function",
+    "residual gating"
+  ],
+  "description": "<p>Source code, results and figures for <i>SDF-Aware Weighting (SAW)</i>, an adaptive eikonal regularisation scheme for three-dimensional level-set physics-informed neural networks. The accompanying manuscript is titled \"SDF-Aware Weighting: Adaptive Eikonal Regularisation for Three-Dimensional Level-Set Physics-Informed Neural Networks\" by Muhammad Akbar Khan and Fahim Raees.</p><p>SAW applies a residual-quantile gate before gradient-norm balancing so that legitimate departures from the signed-distance property are not incorrectly treated as network error. The repository evaluates four three-dimensional benchmarks: a translating sphere, rotating sphere, Zalesak slotted sphere and reversed single vortex.</p><p><b>Contents.</b> Training and evaluation code for all four benchmarks; fixed-weight sweeps; SAW runs at q = 0.95 and gate-off controls; ablations and diagnostics; WENO5 + TVD-RK3 baseline results; complete result tables; and publication figures. See README.md for installation, training, evaluation and reproduction instructions.</p><p>Version 1.2.0 corresponds to the release accompanying the manuscript and includes the complete source code, results and figures used in the reported analyses.</p>"
+}
